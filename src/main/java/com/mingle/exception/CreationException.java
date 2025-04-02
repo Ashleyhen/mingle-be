@@ -10,7 +10,6 @@ public abstract class  CreationException extends RuntimeException {
         log.error(message);
     }
     public static class DuplicateUser extends CreationException {
-
         public DuplicateUser(String message) {
             super(message);
         }
@@ -24,4 +23,20 @@ public abstract class  CreationException extends RuntimeException {
         }
     }
 
+    public static class InvalidPassword extends CreationException {
+        public InvalidPassword(String message) {
+            super(message);
+        }
+    }
+
+    public static class InvalidPhoneNumber extends CreationException {
+        public InvalidPhoneNumber(String message) {
+            super(message);
+        }
+    }
+    public static class InvalidEmail extends CreationException {
+        public InvalidEmail(String message) {
+            super(message);
+        }
+    }
 }

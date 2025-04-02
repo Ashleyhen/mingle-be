@@ -5,12 +5,13 @@ import com.mingle.CredentialsDto;
 import com.mingle.MingleUserDto;
 import com.mingle.entity.MingleUser;
 import com.mingle.exception.CreationException;
+import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.quarkus.runtime.util.StringUtil;
 import io.quarkus.security.UnauthorizedException;
 import io.smallrye.mutiny.Uni;
-import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.inject.Singleton;
-import jakarta.transaction.Transactional;
+
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -25,46 +26,93 @@ public class UserService {
 
     private final ModelMapper modelMapper = new ModelMapper();
 
-    public Uni<MingleUserDto> AuthenticateWithEmailAndPassword(CredentialsDto credentials) {
-
-        return Uni.createFrom().item(() -> {
-            Optional<MingleUser> optionalUser = MingleUser.find("email = ?1 and password = ?2", credentials.getEmail(), credentials.getPassword())
-                    .project(MingleUser.class)
-                    .firstResultOptional();
-            return optionalUser
-                    .map(t -> MingleUserDto
-                            .newBuilder(
-                                    modelMapper.map(t, MingleUserDto.class)
-                            ).setPassword("").build()
-                    )
-                    .orElseThrow(() -> {
-                        log.error("UNAUTHORIZED");
-                        return new UnauthorizedException("UNAUTHORIZED");
-                    });
-        }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool()); // Offload to worker thread
+    @WithTransaction
+    public Uni<MingleUserDto> authenticateWithEmailAndPassword(CredentialsDto credentials) {
+        log.info(String.valueOf(credentials));
+        return MingleUser.find("email = ?1 and password = ?2", credentials.getEmail(), credentials.getPassword())
+                .firstResult() // Returns a Uni<MingleUser>
+                .onItem()
+                .ifNull().failWith(() ->
+                {
+                    log.error("UNAUTHORIZED - Invalid credentials");
+                    return new UnauthorizedException("Authentication attempt failed due to invalid credentials");
+                }).map(user -> {
+                    log.info("found a user");
+                    // Clear sensitive data and map entity to DTO
+                    ((MingleUser) user).setPassword(null);
+                    return modelMapper.map(user, MingleUserDto.class);
+                });
     }
 
-
-    @Transactional
+    @WithTransaction
     public Uni<Long> createUser(MingleUserDto mingleUserDto) {
-        return Uni.createFrom().item(() -> {
-            Optional<MingleUser> duplicate = MingleUser.find(
-                            "email =?1 or username =?2", mingleUserDto.getEmail(), mingleUserDto.getUsername()
-                    )
-                    .project(MingleUser.class).firstResultOptional();
-            if (duplicate.isPresent()) {
-                log.error("duplicate user found check for user id {}", duplicate.get().id);
-                throw new CreationException.DuplicateUser(duplicate.get().getUsername(), duplicate.get().getEmail());
-            }
-            MingleUser mingleUser = modelMapper.map(validation(mingleUserDto), MingleUser.class);
-            mingleUser.setIsActive(false);
-            mingleUser.persist();
-            return mingleUser.id;
-        }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool()); // Offload to worker thread
+        return MingleUser.find(
+                        "email =?1 or username =?2", mingleUserDto.getEmail(), mingleUserDto.getUsername()
+                )
+                .firstResult() // Get the first matching user or null if none found
+                .onItem()
+                .transformToUni(result -> {
+                    var mingleUser = (MingleUser) result;
+                    if (result != null) {
+                        log.error("Duplicate user found: userId={}, username={}, email={}",
+                                mingleUser.id, mingleUser.getUsername(), mingleUser.getEmail());
+                        throw new CreationException.DuplicateUser(mingleUser.getUsername(), mingleUser.getEmail());
+                    }
+                    isValidPassword(mingleUserDto.getPassword());
+                    isValidPhoneNumber(mingleUserDto.getPhone());
+                    isValidEmail(mingleUserDto.getEmail());
+
+                    MingleUser newUser = modelMapper.map(validation(mingleUserDto), MingleUser.class);
+                    newUser.setIsActive(false); // Set user as inactive
+                    return newUser.persist().map(persisted -> newUser.id); //
+                });
     }
+
+    public static void isValidPassword(String password) {
+        String passwordPattern = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{6,}$";
+        if (!password.matches(passwordPattern)) {
+            throw new CreationException.InvalidPassword("""
+                    Invalid password password must meet the requirements
+                    1. More then 5 characters for more long
+                    2. Includes uppercase and lowercase
+                    3. At least one digit
+                    """);
+        }
+        ;
+    }
+
+    public static void isValidEmail(String email) {
+        // Regex for basic email validation
+        String emailPattern = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
+
+        // Validate email
+        if (email.matches(emailPattern)) {
+            throw new CreationException.InvalidEmail("""
+                    Invalid email
+                    Example format: someone@email.com
+                    """);
+        }
+        ;
+    }
+
+    public static void isValidPhoneNumber(String phoneNumber) {
+        // Regex for phone number validation:
+        // 1. Optional "+" for international format
+        // 2. Country code (1–3 digits)
+        // 3. 10-digit number (with or without spaces, dashes, or parentheses)
+        String phoneNumberPattern = "^(\\+\\d{1,3})?\\s?-?\\(?\\d{3}\\)?\\s?-?\\d{3}\\s?-?\\d{4}$";
+
+        if (phoneNumber.matches(phoneNumberPattern)) {
+            throw new CreationException.InvalidPhoneNumber("""
+                    Invalid phone number must be at 10 digits
+                    Example format: +1 (123) 456-7890
+                    """);
+        }
+        ;
+    }
+
 
     private MingleUserDto validation(MingleUserDto mingleUser) {
-
         String errorsMsg = Map.of(
                         MingleUser.Fields.email, mingleUser.getEmail(),
                         MingleUser.Fields.firstname, mingleUser.getFirstname(),
@@ -80,7 +128,6 @@ public class UserService {
         if (StringUtil.isNullOrEmpty(errorsMsg)) {
             throw new CreationException.MissingField(errorsMsg);
         }
-
         return mingleUser;
     }
 }

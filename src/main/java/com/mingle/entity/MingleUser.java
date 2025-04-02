@@ -1,11 +1,11 @@
 package com.mingle.entity;
 
 
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.reactive.panache.PanacheEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldNameConstants;
-
+import io.quarkus.security.jpa.Password;
 
 @EqualsAndHashCode(callSuper = true)
 @Builder
@@ -35,6 +35,7 @@ public class MingleUser extends PanacheEntity {
     private String username;
 
     @Column(nullable = false)
+    @Password
     private String password;
 
     private Short zip;
