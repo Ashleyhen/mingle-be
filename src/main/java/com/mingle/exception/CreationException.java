@@ -39,4 +39,10 @@ public abstract class  CreationException extends RuntimeException {
             super(message);
         }
     }
+
+    public static class InvalidZip extends CreationException {
+        public InvalidZip(String message) {
+            super(message);
+        }
+    }
 }

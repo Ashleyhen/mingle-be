@@ -61,6 +61,7 @@ public class UserService {
                     isValidPassword(mingleUserDto.getPassword());
                     isValidPhoneNumber(mingleUserDto.getPhone());
                     isValidEmail(mingleUserDto.getEmail());
+                    isValidZip(mingleUser.getZip());
 
                     MingleUser newUser = modelMapper.map(validation(mingleUserDto), MingleUser.class);
                     newUser.setIsActive(false); // Set user as inactive
@@ -80,6 +81,17 @@ public class UserService {
         }
         ;
     }
+    public static void isValidZip(int zip) {
+        // Check if ZIP is in the valid range (5-digit format)
+        if (zip < 10000 || zip > 99999) {
+            throw new CreationException.InvalidZip("""
+                Invalid ZIP code format.
+                ZIP must be a 5-digit number.
+                Example: 12345
+                """);
+        }
+    }
+
 
     public static void isValidEmail(String email) {
         // Regex for basic email validation
@@ -92,7 +104,7 @@ public class UserService {
                     Example format: someone@email.com
                     """);
         }
-        ;
+
     }
 
     public static void isValidPhoneNumber(String phoneNumber) {
