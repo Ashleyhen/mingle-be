@@ -63,3 +63,6 @@ If you want to learn more about building native executables, please consult <htt
 Create your first gRPC service
 
 [Related guide section...](https://quarkus.io/guides/grpc-getting-started)
+
+Get-NetTCPConnection -LocalPort 9000 | Select-Object OwningProcess
+Stop-Process -Id <PID> -Force

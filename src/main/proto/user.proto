@@ -8,8 +8,8 @@ package authentication;
 
 service UserGrpc {
   rpc login (CredentialsDto) returns (MingleUserDto) {}
-
   rpc create(MingleUserDto) returns (SuccessMsg){}
+  rpc update(MingleUserDto) returns (SuccessMsg){}
 }
 
 message CredentialsDto {
@@ -18,21 +18,23 @@ message CredentialsDto {
 }
 
 message MingleUserDto {
-  bytes image=1;
-  string bio=2;
-  string firstname=3;
-  string lastname=4;
-  string username=5;
-  string zip=6;
-  string email=7;
-  string password = 8;
-  string phone=9;
-  string relationship=10;
-  string gender=11;
-  string sportType=12;
-  string skill=13;
-  string ageRange=14;
+  int64 id = 1;
+  bytes image=2;
+  string bio=3;
+  string firstname=4;
+  string lastname=5;
+  string username=6;
+  string zip=7;
+  string email=8;
+  string password = 9;
+  string phone=10;
+  string relationship=11;
+  string gender=12;
+  string sportType=13;
+  string skill=14;
+  string birthday=15;
 }
+
 
 
 // loginMsg message for login

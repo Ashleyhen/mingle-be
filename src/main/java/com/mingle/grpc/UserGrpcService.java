@@ -5,7 +5,7 @@ import com.mingle.CredentialsDto;
 import com.mingle.MingleUserDto;
 import com.mingle.SuccessMsg;
 import com.mingle.UserGrpc;
-import com.mingle.exception.CreationException;
+import com.mingle.exception.MingleUserException;
 import com.mingle.services.UserService;
 import io.grpc.Metadata;
 import io.grpc.Status;
@@ -52,13 +52,11 @@ public class UserGrpcService implements UserGrpc {
     @WithTransaction
     public Uni<SuccessMsg> create(MingleUserDto request) {
         return userService.createUser(request)
-                .onItem()
-                .transform(t -> SuccessMsg.newBuilder().setMessage(t.toString()).build())
                 .onFailure().invoke(failure -> {
                     log.error("Exception ", failure);
                     failure.getStackTrace();
                 })
-                .onFailure(CreationException.class)
+                .onFailure(MingleUserException.class)
                 .transform(failure -> {
                     Metadata metadata = new Metadata();
                     // metadata keys
@@ -66,7 +64,7 @@ public class UserGrpcService implements UserGrpc {
                     Metadata.Key<String> httpStatusKey = Metadata.Key.of("http-status", Metadata.ASCII_STRING_MARSHALLER);
                     metadata.put(httpStatusKey, "405"); // bad request
 
-                    if(failure instanceof CreationException.MissingField){
+                    if(failure instanceof MingleUserException.MissingField){
                         metadata.put(debugInfoKey, "Missing required fields");
                         return Status.DATA_LOSS
                                 .withDescription(failure.getMessage())
@@ -76,6 +74,31 @@ public class UserGrpcService implements UserGrpc {
                     return Status.ALREADY_EXISTS
                             .withDescription(failure.getMessage())
                             .asRuntimeException(metadata);
+                });
+
+    }
+
+    @Override
+    @WithTransaction
+    public Uni<SuccessMsg> update(MingleUserDto request) {
+        return userService.updateUser(request)
+                .onFailure().invoke(failure -> {
+                    log.error("Exception ", failure);
+                    failure.getStackTrace();
+                })
+                .onFailure(MingleUserException.UserNotFound.class)
+                .transform(failure -> {
+                    Metadata metadata = new Metadata();
+                    // metadata keys
+                    Metadata.Key<String> debugInfoKey = Metadata.Key.of("debug-info", Metadata.ASCII_STRING_MARSHALLER);
+                    Metadata.Key<String> httpStatusKey = Metadata.Key.of("http-status", Metadata.ASCII_STRING_MARSHALLER);
+                    metadata.put(httpStatusKey, "400"); // bad request
+                        metadata.put(debugInfoKey, ((MingleUserException.UserNotFound) failure).debugMessage);
+                        return Status.INVALID_ARGUMENT
+                                .withDescription(failure.getMessage())
+                                .asRuntimeException(metadata);
+
+
                 });
 
     }
