@@ -5,7 +5,6 @@ import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.google.protobuf.ByteString;
 import com.mingle.MingleUserDto;
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
-import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import io.quarkus.security.jpa.Roles;
 import io.quarkus.security.jpa.UserDefinition;
 import io.quarkus.security.jpa.Username;
@@ -18,6 +17,7 @@ import io.quarkus.security.jpa.Password;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -64,15 +64,18 @@ public class MingleUser extends PanacheEntity {
     private Boolean isActive;
 
     @Enumerated(EnumType.STRING)
-    private RELATIONSHIP relationship;
+    private Relationship relationship;
 
     @Enumerated(EnumType.STRING)
-    private GENDER gender;
+    private Gender gender;
 
     @Enumerated(EnumType.STRING)
-    private SKILL skill;
+    private Skill skill;
 
     private LocalDate birthday;
+
+    @Enumerated(EnumType.STRING)
+    private SportType sportType;
 
     @Roles
     private Set<String> roles;
@@ -88,9 +91,10 @@ public class MingleUser extends PanacheEntity {
         this.email=mingleUserDto.getEmail();
         this.phone=mingleUserDto.getPhone();
         this.birthday= birthdayFormatter(mingleUserDto.getBirthday());
-        this.relationship=RELATIONSHIP.valueOf(mingleUserDto.getRelationship());
-        this.gender=GENDER.valueOf(mingleUserDto.getGender());
-        this.skill = SKILL.valueOf(mingleUserDto.getSkill());
+        this.relationship= Relationship.valueOf(mingleUserDto.getRelationship());
+        this.gender= Gender.valueOf(mingleUserDto.getGender());
+        this.skill = Skill.valueOf(mingleUserDto.getSkill());
+        this.sportType=SportType.valueOf(mingleUserDto.getSportType());
     }
 
 
@@ -104,6 +108,7 @@ public class MingleUser extends PanacheEntity {
     }
     public MingleUserDto toMingleUserDto(){
         MingleUserDto.Builder builder =MingleUserDto.newBuilder()
+                .setId(this.id)
                 .setBio(this.bio)
                 .setFirstname(this.firstname)
                 .setLastname(this.lastname)
@@ -112,6 +117,7 @@ public class MingleUser extends PanacheEntity {
                 .setEmail(this.email)
                 .setPhone(this.phone)
                 .setBirthday(String.valueOf(this.birthday))
+                .setSportType(String.valueOf(this.sportType))
                 .setRelationship(String.valueOf(this.relationship))
                 .setGender(String.valueOf(this.gender))
                 .setSkill(String.valueOf(this.skill));
@@ -119,6 +125,7 @@ public class MingleUser extends PanacheEntity {
         return builder.build();
     }
     public MingleUser updateMingleUser(MingleUserDto mingleUserDto){
+                this.id=mingleUserDto.getId();
                 this.bio=mingleUserDto.getBio();
                 this.firstname=mingleUserDto.getFirstname();
                 this.lastname=mingleUserDto.getLastname();
@@ -128,27 +135,31 @@ public class MingleUser extends PanacheEntity {
                 this.phone=mingleUserDto.getPhone();
                 this.birthday=birthdayFormatter(mingleUserDto.getBirthday());
                 this.image=mingleUserDto.getImage().toByteArray();
-                this.relationship=RELATIONSHIP.valueOf(mingleUserDto.getRelationship());
-                this.gender=GENDER.valueOf(mingleUserDto.getGender());
-                this.skill=SKILL.valueOf(mingleUserDto.getSkill());
+                this.relationship= Relationship.valueOf(mingleUserDto.getRelationship());
+                this.gender= Gender.valueOf(mingleUserDto.getGender());
+                this.skill= Skill.valueOf(mingleUserDto.getSkill());
+                this.sportType=SportType.valueOf(mingleUserDto.getSportType());
                 this.audit.setUpdatedDttm(LocalDateTime.now());
-                this.audit.setUpdatedBy("mingle-be");
+                this.audit.setUpdatedBy(this.username);
                 return this;
     }
-    public enum RELATIONSHIP {
+    public enum Relationship {
         S,
         R
     }
 
-    public enum GENDER {
+    public enum Gender {
         M,
         F
     }
 
-    public enum SKILL {
+    public enum Skill {
         BEGINNER,
         INTERMEDIATE,
         ADVANCED
+    }
+    public enum SportType{
+        COED,EXCLUSIVE
     }
     private static LocalDate birthdayFormatter(String birthday){
 

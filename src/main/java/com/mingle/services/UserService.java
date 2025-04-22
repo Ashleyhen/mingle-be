@@ -5,6 +5,7 @@ import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.mingle.CredentialsDto;
 import com.mingle.MingleUserDto;
 import com.mingle.SuccessMsg;
+import com.mingle.entity.Audit;
 import com.mingle.entity.MingleUser;
 import com.mingle.exception.MingleUserException;
 import com.mingle.repository.MingleUserRepository;
@@ -68,6 +69,7 @@ public class UserService {
                     String hashedPassword = BCrypt.withDefaults().hashToString(12, mingleUserDto.getPassword().toCharArray());
                     newUser.setPassword(hashedPassword);
                     newUser.setIsActive(false); // Set user as inactive
+                    newUser.setAudit(Audit.builder().createdBy(mingleUserDto.getUsername()).build());
 
                     return newUser.persist()
                             .map(t->(MingleUser)t)
@@ -94,10 +96,21 @@ public class UserService {
                                     errorMsg,
                                     "Cannot update a user that doesn't exist"
                             );
-                }).onItem().transform((mingleUser->{
-                    mingleUser.updateMingleUser(mingleUserDto).persist();
-                    return SuccessMsg.newBuilder().setMessage("Mingle user updated successfully").build();
-                }));
+                }).onItem()
+                .transformToUni((mingleUser->
+                        mingleUserRepository.findByEmailOrUsername(mingleUser.getEmail(),mingleUser.getPassword())
+                        .onItem().castTo(MingleUser.class).invoke(m->{
+                            if(m.id!=mingleUser.id){
+                                throw new MingleUserException.DuplicateUser(m.getUsername(),m.getEmail());
+                            }
+                        })
+                        .flatMap(m-> m.updateMingleUser(mingleUserDto).persist().
+                        chain(()->
+                                Uni.createFrom().item(SuccessMsg.newBuilder()
+                                        .setMessage("Mingle user updated successfully")
+                                        .build()
+                                )
+                        ))));
     }
 
     private void mingleFieldValidation(MingleUserDto mingleUserDto) {

@@ -56,6 +56,5 @@ public abstract class MingleUserException extends RuntimeException {
     }
     public static class UserNotFound extends  MingleUserException{
         public UserNotFound(String message,String debugMessage){super(message,debugMessage);}
-
     }
 }
