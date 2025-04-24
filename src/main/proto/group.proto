@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.mingle";
+option java_outer_classname = "GroupProto";
+
+package mingle;
+
+service GroupGrpc{
+    rpc createGroup(MingleGroupDto) returns (GroupCreatedResponse){}
+    rpc updateGroup(MingleGroupDto) returns (GroupUpdatedResponse){}
+}
+
+message GroupCreatedResponse {
+    int64 id=1;
+}
+
+message GroupUpdatedResponse {
+    string response=1;
+}
+message MingleGroupDto {
+    int64 id=1;
+    string zip = 2;                    // String field for zip
+    int64 organizerId = 3;          // Many-to-One relationship (referencing MingleUser)
+    string description = 4;            // String field for description
+    bytes images = 5;                  // Binary field for LOB (Large Object) images
+    string groupName=6;
+}
