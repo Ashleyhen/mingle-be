@@ -27,7 +27,7 @@ public class MingleGroup extends PanacheEntity {
     private Audit audit;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(nullable = false,updatable = false)
+    @JoinColumn(nullable = false,updatable = false,foreignKey = @ForeignKey(name="FK_MingleUser_organizer"))
     private MingleUser organizer;
 
     private String description;

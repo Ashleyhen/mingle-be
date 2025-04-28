@@ -32,7 +32,7 @@ public abstract class MingleException extends RuntimeException{
     public static class UnknownException extends MingleException{
 
         public UnknownException( Throwable throwable) {
-            super("Unknown error occurred", "", throwable.getMessage());
+            super("Unknown error occurred", "Some internal error has occurred!", throwable.getMessage());
         }
 
         @Override

@@ -7,10 +7,12 @@ import com.mingle.GroupCreatedResponse;
 import com.mingle.GroupGrpc;
 import com.mingle.GroupUpdatedResponse;
 import com.mingle.MingleGroupDto;
+import com.mingle.exception.ExceptionUtil;
 import com.mingle.exception.InvalidParamException;
 import com.mingle.exception.MingleException;
 import com.mingle.services.GroupService;
 import io.grpc.Metadata;
+import io.quarkus.grpc.ExceptionHandler;
 import io.quarkus.grpc.GrpcService;
 import io.smallrye.mutiny.Uni;
 import lombok.RequiredArgsConstructor;
@@ -28,32 +30,15 @@ public class MingleGroupGrpc implements GroupGrpc {
     @Override
     public Uni<GroupCreatedResponse> createGroup(MingleGroupDto request) {
         return groupService.createGroup(request)
-                .onFailure().transform(this::handleException); // Use centralized exception handler
+                .onFailure()
+                .transform(ExceptionUtil::exceptionHandler);
     }
 
     @Override
     public Uni<GroupUpdatedResponse> updateGroup(MingleGroupDto request) {
         return groupService.updateGroup(request)
-                .onFailure().transform(this::handleException); // Use centralized exception handler
+                .onFailure()
+                .transform(ExceptionUtil::exceptionHandler); // Use centralized exception handler
     }
-
-    private Throwable handleException(Throwable failure) {
-        Metadata metadata = new Metadata();
-        metadata.put(Metadata.Key.of("http-status", Metadata.ASCII_STRING_MARSHALLER), "400");
-        log.error("Error: {}", failure.getMessage());
-
-        if (failure instanceof MingleException) {
-            return ((InvalidParamException) failure).toStatusRunTimeException();
-        }
-
-        log.error("Unexpected error occurred: {}", failure.getMessage());
-        return toStatusRuntimeException(
-                Status.newBuilder()
-                .setMessage("An unexpected error occurred.")
-                .setCode(Code.UNKNOWN_VALUE)
-                .build()
-        );
-    }
-
 
 }

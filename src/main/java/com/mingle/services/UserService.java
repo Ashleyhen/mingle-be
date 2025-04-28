@@ -46,9 +46,9 @@ public class UserService  {
     @WithTransaction
     public Uni<SuccessMsg> update(MingleUserDto mingleUserDto) {
         return validateParams(mingleUserDto)
-                .chain(() -> checkUserExists(mingleUserDto))
                 .chain(() -> checkForEmailDuplicate(mingleUserDto))
-                .chain(() -> updateExistingUser(mingleUserDto));
+                .chain(() -> checkUserExists(mingleUserDto))
+                .chain((mingleUser) -> updateExistingUser(mingleUserDto,mingleUser));
     }
 
 
@@ -134,13 +134,13 @@ public class UserService  {
                 }).replaceWithVoid(); // Return Void explicitly
     }
 
-    private Uni<SuccessMsg> updateExistingUser(MingleUserDto mingleUserDto) {
-        return mingleUserRepository.findById(mingleUserDto.getId())
-                .flatMap(existingUser ->
-                        existingUser.updateMingleUser(mingleUserDto).persist()
-                        .chain(() -> Uni.createFrom().item(SuccessMsg.newBuilder()
+    private Uni<SuccessMsg> updateExistingUser(MingleUserDto mingleUserDto,MingleUser mingleUser) {
+        return mingleUser.updateMingleUser(mingleUserDto)
+                .persist()
+                .chain(() -> Uni.createFrom().item(SuccessMsg.newBuilder()
                                 .setMessage("Mingle user updated successfully")
-                                .build())));
+                                .build())
+                        );
     }
 
 }
