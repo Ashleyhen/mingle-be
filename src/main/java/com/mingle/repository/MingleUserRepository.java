@@ -12,11 +12,10 @@ public class MingleUserRepository implements PanacheRepository<MingleUser> {
     public Uni<MingleUser> findByEmail(String email){
         return  MingleUser.find("email = ?1", email).firstResult();
     }
-    public Uni<MingleUser> findByEmailOrPassword(String email,String password){
-        return  MingleUser.find("email = ?1 or password =?2", email,password).firstResult();
-    }
 
-    public Uni<MingleUser> findByEmailOrUsername(String email,String username){
+
+
+    public Uni<MingleUser> findByEmailOrUsername(String email, String username){
         return  MingleUser.find("email = ?1 or username =?2", email,username).firstResult();
     }
 }

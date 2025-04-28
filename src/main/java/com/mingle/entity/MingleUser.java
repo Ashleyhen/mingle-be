@@ -1,14 +1,12 @@
 package com.mingle.entity;
 
 
-import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.google.protobuf.ByteString;
 import com.mingle.MingleUserDto;
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
 import io.quarkus.security.jpa.Roles;
 import io.quarkus.security.jpa.UserDefinition;
 import io.quarkus.security.jpa.Username;
-import io.smallrye.mutiny.Uni;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldNameConstants;
@@ -17,7 +15,6 @@ import io.quarkus.security.jpa.Password;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -29,6 +26,12 @@ import java.util.Set;
 @FieldNameConstants
 @Data
 @UserDefinition
+@Table(
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"email"}),
+                @UniqueConstraint(columnNames = {"username"}),
+        }
+)
 public class MingleUser extends PanacheEntity {
 
     @Embedded
@@ -80,6 +83,13 @@ public class MingleUser extends PanacheEntity {
     @Roles
     private Set<String> roles;
 
+    @OneToMany(fetch = FetchType.LAZY,cascade = CascadeType.ALL, mappedBy = "organizer")
+    private Set<MingleGroup> mingleGroup;
+
+    MingleUser(Long id){
+        this.id=id;
+    }
+
     public MingleUser(MingleUserDto mingleUserDto){
         this.bio=mingleUserDto.getBio();
         this.image= mingleUserDto.getImage().toByteArray();
@@ -97,15 +107,6 @@ public class MingleUser extends PanacheEntity {
         this.sportType=SportType.valueOf(mingleUserDto.getSportType());
     }
 
-
-
-    public Uni<MingleUser> persistWithHashedPwd(){
-        if(this.image==null){
-            setImage(new byte[0]);
-        }
-        setPassword(BCrypt.withDefaults().hashToString(12,this.password.toCharArray()));;
-        return super.persist();
-    }
     public MingleUserDto toMingleUserDto(){
         MingleUserDto.Builder builder =MingleUserDto.newBuilder()
                 .setId(this.id)

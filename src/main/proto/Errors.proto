@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package mingle;
+
+// Custom error details
+message ErrorDetailResponse {
+    string title = 1;
+    string description = 2;
+    string endpointMessage=3;
+    map<string, string> metadata = 4; // Optional key-value metadata
+}
