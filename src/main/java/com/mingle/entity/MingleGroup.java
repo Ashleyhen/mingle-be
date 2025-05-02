@@ -7,6 +7,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldNameConstants;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @EqualsAndHashCode(callSuper = true)
 @Builder
 @Entity
@@ -15,12 +18,15 @@ import lombok.experimental.FieldNameConstants;
 @FieldNameConstants
 @Data
 @Table(
-        uniqueConstraints = @UniqueConstraint(columnNames = {"zip", "groupName"})
+        name = "mingle_group",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"zip", "group_name"})
 )
 public class MingleGroup extends PanacheEntity {
 
+    @Column(nullable = false)
     private String zip;
 
+    @Column(name = "group_name", nullable = false)
     private String groupName;
 
     @Embedded
@@ -30,30 +36,47 @@ public class MingleGroup extends PanacheEntity {
     @JoinColumn(nullable = false,updatable = false,foreignKey = @ForeignKey(name="FK_MingleUser_organizer"))
     private MingleUser organizer;
 
+
+    @Builder.Default
+    @OneToMany(fetch = FetchType.EAGER,cascade = CascadeType.ALL,mappedBy = "mingleGroup")
+    private List<MingleLeague> league = new ArrayList<>();
+
     private String description;
 
-    @Lob
-    private byte[] images;
+    public void setId(Long id) {
+        this.id = id;
+    }
 
+    public Long getId() {
+        return this.id;
+    }
+
+    @Lob
+    @Builder.Default
+    private byte[] images=new byte[]{};
+
+    @Column(name = "is_active")
     private Boolean isActive;
 
     public MingleGroupDto toMingleGroupDto(){
-
         return MingleGroupDto.newBuilder()
+                .setId(this.id)
                 .setDescription(description)
                 .setGroupName(groupName)
-                .setOrganizerId(organizer.id)
                 .setZip(zip)
-                .setImages(ByteString.copyFrom(images))
+                .setImages(images == null?ByteString.empty():ByteString.copyFrom(images))
+                .addAllMingleLeagueDto(league.stream().map(MingleLeague::getMingleLeagueDto).toList())
                 .build();
     }
 
     public MingleGroup(MingleGroupDto mingleGroupDto){
         this.groupName=mingleGroupDto.getGroupName();
-        this.setOrganizer( new MingleUser(mingleGroupDto.getId()));
         this.description=mingleGroupDto.getDescription();
         this.images= mingleGroupDto.getImages().toByteArray();
         this.zip=mingleGroupDto.getZip();
+        this.league=mingleGroupDto.getMingleLeagueDtoList().stream().map(MingleLeague::new).toList();
+        this.organizer=new MingleUser(mingleGroupDto.getOrganizer());
+        this.getLeague().forEach(t->t.setMingleGroup(this));
     }
 
 }

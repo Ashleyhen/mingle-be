@@ -13,8 +13,6 @@ public class MingleUserRepository implements PanacheRepository<MingleUser> {
         return  MingleUser.find("email = ?1", email).firstResult();
     }
 
-
-
     public Uni<MingleUser> findByEmailOrUsername(String email, String username){
         return  MingleUser.find("email = ?1 or username =?2", email,username).firstResult();
     }

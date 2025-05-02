@@ -1,6 +1,7 @@
 package com.mingle.exception;
 
 import com.mingle.MingleGroupDto;
+import com.mingle.MingleLeagueDto;
 import com.mingle.MingleUserDto;
 import com.mingle.entity.MingleUser;
 import io.grpc.Metadata;
@@ -10,8 +11,13 @@ public  class DuplicateException extends MingleException {
     public DuplicateException(String title, String description, String debugDetail) {
         super(title, description, debugDetail);
     }
+
     public DuplicateException(String title, String description, MingleGroupDto mingleGroupDto) {
         super(title,description, title+". Duplicate group found check name="+mingleGroupDto.getGroupName()+", zip="+ mingleGroupDto.getZip());
+    }
+
+    public DuplicateException(String title, String description, MingleLeagueDto mingleLeagueDto) {
+        super(title,description, title+". Duplicate group found check name="+mingleLeagueDto.getEventName()+" and group="+ mingleLeagueDto.getMingleGroupDto().getId());
     }
 
     public DuplicateException(String title, String description, MingleUserDto mingleUserDto) {

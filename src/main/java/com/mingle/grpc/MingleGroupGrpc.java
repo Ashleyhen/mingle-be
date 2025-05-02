@@ -1,24 +1,16 @@
 package com.mingle.grpc;
 
-import com.google.protobuf.Any;
-import com.google.rpc.Code;
-import com.google.rpc.Status;
-import com.mingle.GroupCreatedResponse;
-import com.mingle.GroupGrpc;
-import com.mingle.GroupUpdatedResponse;
-import com.mingle.MingleGroupDto;
+import com.mingle.*;
+import com.mingle.entity.MingleLeague;
 import com.mingle.exception.ExceptionUtil;
-import com.mingle.exception.InvalidParamException;
-import com.mingle.exception.MingleException;
+import com.mingle.impl.MingleCrudImpl;
 import com.mingle.services.GroupService;
-import io.grpc.Metadata;
-import io.quarkus.grpc.ExceptionHandler;
+import com.mingle.services.LeagueService;
 import io.quarkus.grpc.GrpcService;
 import io.smallrye.mutiny.Uni;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import static io.grpc.protobuf.StatusProto.toStatusRuntimeException;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -26,19 +18,34 @@ import static io.grpc.protobuf.StatusProto.toStatusRuntimeException;
 public class MingleGroupGrpc implements GroupGrpc {
 
     private final GroupService groupService;
+    private MingleCrudImpl<MingleGroupDto> groupServiceImpl ;
+
+    @PostConstruct
+    void init(){
+        groupServiceImpl= new MingleCrudImpl<>(groupService);
+    }
+
 
     @Override
-    public Uni<GroupCreatedResponse> createGroup(MingleGroupDto request) {
-        return groupService.createGroup(request)
-                .onFailure()
-                .transform(ExceptionUtil::exceptionHandler);
+    public Uni<MingleGroupDto> createGroup(MingleGroupDto request) {
+        return groupServiceImpl.create(request)
+                .onItem()
+                .castTo(MingleGroupDto.class);
     }
 
     @Override
-    public Uni<GroupUpdatedResponse> updateGroup(MingleGroupDto request) {
+    public Uni<MingleGroupDto> updateGroup(MingleGroupDto request) {
         return groupService.updateGroup(request)
                 .onFailure()
                 .transform(ExceptionUtil::exceptionHandler); // Use centralized exception handler
     }
+
+    @Override
+    public Uni<ListMingleGroupDto> findAllGroupsByUserId(MingleId mingleUserId) {
+        return groupService.findAllGroupsByUserId(mingleUserId.getId())
+                .onFailure().transform(ExceptionUtil::exceptionHandler);
+    }
+
+
 
 }

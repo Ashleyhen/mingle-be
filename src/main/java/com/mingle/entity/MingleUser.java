@@ -14,56 +14,62 @@ import io.quarkus.security.jpa.Password;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+
+import static com.mingle.utility.Formatters.toLocalDate;
 
 @EqualsAndHashCode(callSuper = true)
 @Builder
 @Entity
 @AllArgsConstructor
-@NoArgsConstructor
+@NoArgsConstructor(force = true)
 @FieldNameConstants
 @Data
 @UserDefinition
 @Table(
         uniqueConstraints = {
                 @UniqueConstraint(columnNames = {"email"}),
-                @UniqueConstraint(columnNames = {"username"}),
-        }
+                @UniqueConstraint(columnNames = {"user_name"}),
+        },
+        name = "mingle_user"
 )
 public class MingleUser extends PanacheEntity {
 
     @Embedded
     Audit audit;
 
-    @Column(length = 500)
+    @Column(nullable = false)
     private String bio;
 
     @Lob
     private byte[] image;
 
-    @Column(nullable = false)
+    @Column(name="first_name",nullable = false)
     private String firstname;
 
-    @Column(nullable = false)
+    @Column(name="last_name",nullable = false)
     private String lastname;
 
-    @Column(unique = true, nullable = false)
     @Username
+    @Column(name="user_name",unique = true, nullable = false)
     private String username;
 
     @Column(nullable = false)
     @Password
     private String password;
 
+    @Column(nullable = false)
     private String zip;
 
     @Column(unique = true, nullable = false)
     private String email;
 
+    @Column(nullable = false)
     private String phone;
 
+    @Column(name = "is_active")
     private Boolean isActive;
 
     @Enumerated(EnumType.STRING)
@@ -75,22 +81,24 @@ public class MingleUser extends PanacheEntity {
     @Enumerated(EnumType.STRING)
     private Skill skill;
 
+    @Column(nullable = false)
     private LocalDate birthday;
 
     @Enumerated(EnumType.STRING)
+    @Column(name="sport_type")
     private SportType sportType;
 
     @Roles
     private Set<String> roles;
 
-    @OneToMany(fetch = FetchType.LAZY,cascade = CascadeType.ALL, mappedBy = "organizer")
-    private Set<MingleGroup> mingleGroup;
+    @Builder.Default
+    @OneToMany(fetch = FetchType.EAGER,cascade = CascadeType.ALL, mappedBy = "organizer")
+    private List<MingleGroup> mingleGroup = List.of() ;
 
-    MingleUser(Long id){
-        this.id=id;
-    }
 
     public MingleUser(MingleUserDto mingleUserDto){
+        if(mingleUserDto.getId()!=0L)
+            this.id=mingleUserDto.getId();
         this.bio=mingleUserDto.getBio();
         this.image= mingleUserDto.getImage().toByteArray();
         this.firstname=mingleUserDto.getFirstname();
@@ -100,11 +108,15 @@ public class MingleUser extends PanacheEntity {
         this.zip=mingleUserDto.getZip();
         this.email=mingleUserDto.getEmail();
         this.phone=mingleUserDto.getPhone();
-        this.birthday= birthdayFormatter(mingleUserDto.getBirthday());
+        this.birthday= toLocalDate(mingleUserDto.getBirthday());
         this.relationship= Relationship.valueOf(mingleUserDto.getRelationship());
         this.gender= Gender.valueOf(mingleUserDto.getGender());
         this.skill = Skill.valueOf(mingleUserDto.getSkill());
         this.sportType=SportType.valueOf(mingleUserDto.getSportType());
+        this.setMingleGroup(
+                mingleUserDto.getMingleGroupDtoList().stream().map(MingleGroup::new).toList()
+        );
+        this.getMingleGroup().forEach(t->t.setOrganizer(this));
     }
 
     public MingleUserDto toMingleUserDto(){
@@ -121,10 +133,15 @@ public class MingleUser extends PanacheEntity {
                 .setSportType(String.valueOf(this.sportType))
                 .setRelationship(String.valueOf(this.relationship))
                 .setGender(String.valueOf(this.gender))
-                .setSkill(String.valueOf(this.skill));
+                .setSkill(String.valueOf(this.skill))
+                .addAllMingleGroupDto(
+                        this.getMingleGroup().stream().map(MingleGroup::toMingleGroupDto
+                        ).toList()
+                );
         Optional.ofNullable(this.image).ifPresent(t->builder.setImage(ByteString.copyFrom(t)));
         return builder.build();
     }
+
     public MingleUser updateMingleUser(MingleUserDto mingleUserDto){
                 this.id=mingleUserDto.getId();
                 this.bio=mingleUserDto.getBio();
@@ -134,7 +151,7 @@ public class MingleUser extends PanacheEntity {
                 this.zip=mingleUserDto.getZip();
                 this.email=mingleUserDto.getEmail();
                 this.phone=mingleUserDto.getPhone();
-                this.birthday=birthdayFormatter(mingleUserDto.getBirthday());
+                this.birthday= toLocalDate(mingleUserDto.getBirthday());
                 this.image=mingleUserDto.getImage().toByteArray();
                 this.relationship= Relationship.valueOf(mingleUserDto.getRelationship());
                 this.gender= Gender.valueOf(mingleUserDto.getGender());
@@ -161,10 +178,6 @@ public class MingleUser extends PanacheEntity {
     }
     public enum SportType{
         COED,EXCLUSIVE
-    }
-    private static LocalDate birthdayFormatter(String birthday){
-
-        return LocalDate.parse(birthday, DateTimeFormatter.ofPattern("MM-dd-yyyy"));
     }
 
 

@@ -1,12 +1,13 @@
 package com.mingle.utility;
 
-import com.mingle.exception.ErrorDetail;
 import com.mingle.exception.InvalidParamException;
 import io.quarkus.runtime.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -65,9 +66,7 @@ public class ValidateParams {
         return Optional.empty();
     }
 
-    public static Optional<String> firstName(String firstName) {
-        return basicValidation(firstName,"firstName");
-    }
+    public static Optional<String> firstName(String firstName) { return basicValidation(firstName,"firstName"); }
 
     public static Optional<String> lastName(String lastName) {
         return basicValidation(lastName,"lastName");
@@ -88,17 +87,17 @@ public class ValidateParams {
         return Optional.empty();
     }
 
-    public static Optional<String> birthday(String birthday) {
+    public static Optional<String> mingleDateFormat(String date) {
         // Regular expression to match the format MM-DD-YYYY
-        String regex = "\\d{2}-\\d{2}-\\d{4}";
-
+        String regex = "\\d{4}-\\d{2}-\\d{2}";
         // Check if the input matches the format
-        if (birthday == null || !birthday.matches(regex)) {
+        if (date == null || !date.matches(regex)) {
+            log.error("Invalid date format! date received {}",date);
             return Optional.of(
             """
-            Invalid birthday format
-            Birthday must be in the format MM-DD-YYYY.
-            Example: 11-24-1995
+            Invalid date format
+            Date must be in the format YYYY-MM-DD.
+            Example: 1995-11-24
             """);
         }
         // The input is valid
@@ -108,12 +107,15 @@ public class ValidateParams {
     @SafeVarargs
     public static void mingleFieldValidation(Optional<String> ...errorList) {
 
-        List<String> errors = Stream.of(
+        Set<String> errors = Stream.of(
                 errorList
-        ).filter(Optional::isPresent).map(Optional::get).toList();
+        ).filter(Optional::isPresent).map(Optional::get).collect(Collectors.toSet());
 
         if(!errors.isEmpty()){
             throw new InvalidParamException("Invalid Input",errors);
         }
     }
+
+    public static Optional<String> eventName(String firstName) { return basicValidation(firstName,"event name"); }
+
 }
