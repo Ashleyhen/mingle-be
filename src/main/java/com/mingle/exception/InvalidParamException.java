@@ -8,13 +8,14 @@ import io.grpc.StatusRuntimeException;
 
 import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 
 public  class InvalidParamException extends MingleException {
-    public final List<String> errors;
+    public final Set<String> errors;
 
-    public InvalidParamException(String title,List<String> errors ){
+    public InvalidParamException(String title, Set<String> errors ){
         super(title,String.join("\n",errors),"Error: "+errors.stream()
                 .map(t-> "Error: "+t ).collect(Collectors.joining()));
         this.errors =errors;

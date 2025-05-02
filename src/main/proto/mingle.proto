@@ -1,0 +1,113 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.mingle";
+option java_outer_classname = "UserProto";
+
+package authentication;
+
+service UserGrpc {
+  rpc login (CredentialsDto) returns (MingleUserDto){}
+  rpc create(MingleUserDto) returns (MingleUserDto){}
+  rpc update(MingleUserDto) returns (MingleUserDto){}
+}
+
+service GroupGrpc{
+    rpc createGroup(MingleGroupDto) returns (MingleGroupDto){}
+    rpc updateGroup(MingleGroupDto) returns (MingleGroupDto){}
+    rpc findAllGroupsByUserId(MingleId) returns (ListMingleGroupDto){}
+}
+
+service LeagueGrpc{
+    rpc createLeague(MingleLeagueDto) returns (MingleLeagueDto){}
+}
+
+message MingleUserDto {
+  int64 id = 1;
+  bytes image=2;
+  string bio=3;
+  string firstname=4;
+  string lastname=5;
+  string username=6;
+  string zip=7;
+  string email=8;
+  string password = 9;
+  string phone=10;
+  string relationship=11;
+  string gender=12;
+  string sportType=13;
+  string skill=14;
+  string birthday=15;
+  repeated MingleGroupDto mingleGroupDto = 16;
+}
+
+message MingleGroupDto {
+    int64 id=1;
+    string zip = 2;                    // String field for zip
+    string description = 3;            // String field for description
+    bytes images = 4;                  // Binary field for LOB (Large Object) images
+    string groupName=5;
+    MingleUserDto organizer=6;
+    repeated MingleLeagueDto mingleLeagueDto = 7;
+}
+
+
+message MingleLeagueDto {
+    int64 id = 1;
+    string eventName = 2;
+    string startDate = 3;         // Consider using a timestamp if needed
+    string endDate = 4;           // Same as start_date
+    float pricePerPlayer = 5;
+    string description = 6;
+    string duration = 7;
+    int32 playersPerTeam = 8;
+    string registrationEndDate = 9; // Consider timestamp as well
+    MingleGroupDto mingleGroupDto =10;
+    repeated MingleLocationDto mingleLocationDto=11;
+}
+
+message MingleLocationDto {
+  int64 id = 1;
+  string hostEmail = 2;
+  string hostName = 3;
+  string locationAddress = 4;
+  string zipCode = 5;
+  string locationName = 6;
+  string description = 7;
+  MingleLeagueDto mingleLeagueDto= 8;
+  repeated MingleTimeSlotDto mingleTimeSlotDto = 9;
+}
+message MingleTimeSlotDto {
+  int64 id = 1;
+  string startTime = 2;
+  string endTime = 3;
+  string dayOfWeek = 4;
+  bool isPlayable = 5;
+  string reoccurrence = 6;
+  MingleLocationDto mingleLocationDto=7;
+}
+
+message CredentialsDto {
+  string email = 1;
+  string password = 2;
+}
+
+
+// loginMsg message for login
+message SuccessMsg {
+  string message = 1; // loginMsg message (e.g., "Login successful!")
+}
+
+
+
+message MingleId {
+    int64 id=1;
+}
+
+message GroupUpdatedResponse {
+    string response=1;
+}
+
+message ListMingleGroupDto {
+    repeated MingleGroupDto group=1;
+}
