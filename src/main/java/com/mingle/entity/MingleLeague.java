@@ -8,6 +8,7 @@ import lombok.*;
 import lombok.experimental.FieldNameConstants;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.mingle.utility.Formatters.localDateToString;
@@ -62,7 +63,8 @@ public class MingleLeague extends PanacheEntity {
         private MingleGroup mingleGroup;
 
         @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, mappedBy = "mingleLeague")
-        private List<MingleLocation> mingleLocations; // Fixes mappedBy reference
+        @Builder.Default
+        private List<MingleLocation> mingleLocations = new ArrayList<>(); // Fixes mappedBy reference
 
 
         // Getters and Setters
@@ -78,11 +80,11 @@ public class MingleLeague extends PanacheEntity {
                 this.mingleLocations=mingleLeagueDto
                         .getMingleLocationDtoList().stream().map(MingleLocation::new).toList();
                 this.mingleLocations.forEach(t->t.setMingleLeague(this));
-
         }
 
         public MingleLeagueDto getMingleLeagueDto() {
                 return MingleLeagueDto.newBuilder()
+                        .setId(this.id)
                         .setEventName(this.eventName)
                         .setStartDate(localDateToString(this.startDate))
                         .setEndDate(localDateToString(this.endDate))
@@ -91,7 +93,7 @@ public class MingleLeague extends PanacheEntity {
                         .setDescription(this.description)
                         .setDuration(this.duration)
                         .setPlayersPerTeam(this.playersPerTeam)
-                        .addAllMingleLocationDto(this.mingleLocations.stream().map(MingleLocation::getMingleLeagueDto).toList())
+                        .addAllMingleLocationDto(this.mingleLocations.stream().map(MingleLocation::getMingleLocationDto).toList())
                         .build();
         }
 }

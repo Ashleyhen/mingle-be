@@ -6,6 +6,7 @@ import io.quarkus.hibernate.reactive.panache.PanacheEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @EqualsAndHashCode(callSuper = true)
@@ -43,10 +44,11 @@ public class MingleLocation extends PanacheEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mingle_league_id", nullable = false,updatable = false, foreignKey = @ForeignKey(name="location_league"))
-    private MingleLeague mingleLeague;
+    private MingleLeague mingleLeague ;
 
     @OneToMany(fetch = FetchType.EAGER,mappedBy ="mingleLocation", cascade = CascadeType.ALL)
-    private List<MingleTimeSlot> mingleTimeSlot;
+    @Builder.Default
+    private List<MingleTimeSlot> mingleTimeSlot = new ArrayList<>();
 
 
 
@@ -59,11 +61,8 @@ public class MingleLocation extends PanacheEntity {
         this.description= mingleLocation.getDescription();// Optional description field
         this.mingleTimeSlot=mingleLocation.getMingleTimeSlotDtoList().stream().map(MingleTimeSlot::new).toList();
         this.getMingleTimeSlot().forEach(t->t.setMingleLocation(this));
-        this.mingleLeague=new MingleLeague(mingleLocation.getMingleLeagueDto());
-
-
     }
-    MingleLocationDto getMingleLeagueDto(){
+    public MingleLocationDto getMingleLocationDto(){
         return MingleLocationDto.newBuilder()
                 .setHostEmail(this.hostEmail)
                 .setHostName(this.hostName)
@@ -76,5 +75,7 @@ public class MingleLocation extends PanacheEntity {
                 .build();
 
     }
+
+
 }
 
