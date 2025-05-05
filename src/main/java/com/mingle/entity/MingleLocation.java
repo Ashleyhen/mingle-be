@@ -71,7 +71,6 @@ public class MingleLocation extends PanacheEntity {
                 .setLocationName(this.locationName)
                 .setDescription(this.description)
                 .addAllMingleTimeSlotDto(this.mingleTimeSlot.stream().map(MingleTimeSlot::toMingleTimeSlotDto).toList())
-                .setMingleLeagueDto(this.getMingleLeague().getMingleLeagueDto())
                 .build();
 
     }
