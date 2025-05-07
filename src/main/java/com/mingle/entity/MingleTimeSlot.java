@@ -2,6 +2,7 @@ package com.mingle.entity;
 
 import com.mingle.MingleTimeSlotDto;
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
+import io.quarkus.runtime.util.StringUtil;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -55,9 +56,9 @@ public class MingleTimeSlot extends PanacheEntity {
     public MingleTimeSlot(MingleTimeSlotDto mingleTimeSlotDto) {
         startTime=mingleTimeSlotDto.getStartTime();
         endTime=mingleTimeSlotDto.getEndTime();
-        dayOfWeek=DayOfWeek.valueOf(mingleTimeSlotDto.getDayOfWeek());
+        dayOfWeek=DayOfWeek.valueOf(mingleTimeSlotDto.getDayOfWeek().toUpperCase());
         isPlayable=mingleTimeSlotDto.getIsPlayable();
-        reoccurrence=Reoccurrence.valueOf(mingleTimeSlotDto.getReoccurrence());
+        reoccurrence=Reoccurrence.valueOf(mingleTimeSlotDto.getReoccurrence().toUpperCase());
         mingleLocation=new MingleLocation(mingleTimeSlotDto.getMingleLocationDto());
     }
     public MingleTimeSlotDto toMingleTimeSlotDto(){
