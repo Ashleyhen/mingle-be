@@ -38,7 +38,7 @@ public class GroupService  implements IMingleCreate<MingleGroupDto> {
     public Uni<MingleGroupDto> updateGroup(MingleGroupDto mingleGroupDto) {
         return validateParams(mingleGroupDto)
                 .chain(()-> checkForExistingGroupBeforeUpdating(mingleGroupDto))
-                .onItem().ifNull().switchTo(()->groupRepository.findById(mingleGroupDto.getId()))
+                .onItem().ifNull().switchTo(()->groupRepository.findByIdWithOrganizer(mingleGroupDto.getId()))
                 .onItem().ifNull().failWith(new DuplicateException("Failed to update user","Can't update user to an existing username or email",mingleGroupDto))
                 .chain((groupEntity)-> persistGroup(mingleGroupDto, groupEntity));
     }
@@ -60,15 +60,15 @@ public class GroupService  implements IMingleCreate<MingleGroupDto> {
         groupEntity.setDescription(groupEntity.getDescription());
         groupEntity.setZip(groupEntity.getZip());
         return groupEntity.persist()
-                .onItem().castTo(MingleGroupDto.class)
+                .onItem().castTo(MingleGroup.class)
                 .chain((group) ->
                         Uni.createFrom()
-                                .item(() -> group));
+                                .item(group::toMingleGroupDto));
     }
 
     private Uni<MingleGroup> checkForExistingGroupBeforeUpdating(MingleGroupDto mingleGroup) {
         return groupRepository.findByGroupNameAndZip(mingleGroup.getGroupName(), mingleGroup.getZip())
-                .onItem().invoke((groupEntity -> {
+                .onItem().ifNotNull().invoke((groupEntity -> {
                     if (groupEntity.id != mingleGroup.getId()) {
                         throw new DuplicateException(
                                 "Can't update an existing group!",
