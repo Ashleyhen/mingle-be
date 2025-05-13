@@ -2,8 +2,8 @@ package com.mingle.services;
 
 import com.mingle.*;
 import com.mingle.entity.MingleGroup;
-import com.mingle.entity.MingleUser;
 import com.mingle.exception.DuplicateException;
+import com.mingle.exception.NotFoundException;
 import com.mingle.impl.IMingleCreate;
 import com.mingle.repository.GroupRepository;
 import com.mingle.repository.MingleUserRepository;
@@ -37,9 +37,13 @@ public class GroupService  implements IMingleCreate<MingleGroupDto> {
     @WithTransaction
     public Uni<MingleGroupDto> updateGroup(MingleGroupDto mingleGroupDto) {
         return validateParams(mingleGroupDto)
-                .chain(()-> checkForExistingGroupBeforeUpdating(mingleGroupDto))
-                .onItem().ifNull().switchTo(()->groupRepository.findByIdWithOrganizer(mingleGroupDto.getId()))
-                .onItem().ifNull().failWith(new DuplicateException("Failed to update user","Can't update user to an existing username or email",mingleGroupDto))
+                .chain(()->groupRepository.findByIdWithOrganizer(mingleGroupDto.getId()))
+                .onItem().ifNull().failWith(new NotFoundException(
+                        "Failed to update group",
+                        "Can't update group if the group doesn't exist",
+                        "missing mingle group with the mingleGroupDto.id "+mingleGroupDto.getId()
+                                +"group name:"+ mingleGroupDto.getGroupName()+" zip:"+mingleGroupDto.getZip()))
+                .invoke(()-> checkForExistingGroupBeforeUpdating(mingleGroupDto))
                 .chain((groupEntity)-> persistGroup(mingleGroupDto, groupEntity));
     }
 
