@@ -40,7 +40,6 @@ public class MingleUser extends PanacheEntity {
     @Embedded
     Audit audit;
 
-    @Column(nullable = false)
     private String bio;
 
     @Lob
