@@ -20,6 +20,9 @@ import jakarta.inject.Singleton;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.keycloak.admin.client.Keycloak;
+import org.keycloak.representations.idm.CredentialRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 
 import java.util.*;
 
@@ -32,6 +35,7 @@ import static com.mingle.utility.ValidateParams.mingleFieldValidation;
 public class UserService implements IMingleCreate<MingleUserDto> {
 
     private final MingleUserRepository mingleUserRepository;
+    private final Keycloak keycloak;
 
     @WithTransaction
     public Uni<MingleUserDto> login(CredentialsDto credentials) {
@@ -83,6 +87,14 @@ public class UserService implements IMingleCreate<MingleUserDto> {
         newUser.setPassword(hashedPassword);
         newUser.setIsActive(false); // Set user as inactive
         newUser.setAudit(Audit.builder().createdBy(mingleUserDto.getUsername()).build());
+
+        UserRepresentation minimalUser = new UserRepresentation();
+        minimalUser.setUsername("testuser");
+        minimalUser.setEnabled(true);
+// Try without password first
+        var response=keycloak.realm("mingle").users().create(minimalUser);
+        log.info("response status info  {}",response.getStatusInfo());
+
 
         return newUser.persist()
                 .onItem().castTo(MingleUser.class)

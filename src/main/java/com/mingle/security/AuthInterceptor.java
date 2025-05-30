@@ -17,10 +17,7 @@ import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 @Slf4j
 @GlobalInterceptor
@@ -42,12 +39,13 @@ public class AuthInterceptor implements ServerInterceptor {
             ServerCallHandler<ReqT, RespT> next) {
         identityAssociation.getDeferredIdentity()
                 .subscribe().with(identity -> {
-                    String token = extractBearerToken(headers);
-                    parseJwtAsync(token)
-                            .subscribe().with(jwt -> {
-                                String email = jwt.getClaim("email");
-                                log.info("Authenticated User Email: {}", email);
-                            });
+                    extractBearerToken(headers).ifPresent(token->{
+                        parseJwtAsync(token)
+                                .subscribe().with(jwt -> {
+                                    String email = jwt.getClaim("email");
+                                    log.info("Authenticated User Email: {}", email);
+                                });
+                    });
                 });
         identityAssociation.getDeferredIdentity()
                 .subscribe().with(identity -> {
@@ -62,14 +60,14 @@ public class AuthInterceptor implements ServerInterceptor {
 
         return next.startCall(call, headers);
     }
-    public String extractBearerToken(Metadata headers) {
+    public Optional<String> extractBearerToken(Metadata headers) {
         Metadata.Key<String> AUTHORIZATION_KEY = Metadata.Key.of("Authorization", Metadata.ASCII_STRING_MARSHALLER);
         String authHeader = headers.get(AUTHORIZATION_KEY);
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            return authHeader.substring(7); // Extract the token
+            return Optional.of(authHeader.substring(7)); // Extract the token
         }
-        return null; // Return null if header is missing or malformed
+        return Optional.empty(); // Return null if header is missing or malformed
     }
     public Uni<JsonWebToken> parseJwtAsync(String token) {
         return Uni.createFrom().item(() -> {
