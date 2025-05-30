@@ -31,8 +31,7 @@ public class MingleUserGrpc implements UserGrpc {
     private final UserService userService;
 
 
-    @Inject
-    private CurrentIdentityAssociation currentIdentityAssociation;
+
 
     private MingleCrudImpl<MingleUserDto> mingleCrud ;
 
@@ -58,9 +57,6 @@ public class MingleUserGrpc implements UserGrpc {
     @Override
     @WithTransaction
     public Uni<MingleUserDto> login(CredentialsDto request) {
-        currentIdentityAssociation.getDeferredIdentity()
-                .onItem().transform(SecurityIdentity::getPrincipal)
-                .subscribe().with(principal -> System.out.println("User: " + principal));
         return userService.login(request)
                 .onFailure()
                 .transform(ExceptionUtil::exceptionHandler);

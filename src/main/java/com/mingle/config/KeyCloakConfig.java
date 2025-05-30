@@ -15,25 +15,20 @@ public class KeyCloakConfig {
     @ConfigProperty(name="mingle.keycloak.realm")
     String realm;
 
-    @ConfigProperty(name="mingle.keycloak.clientId")
+    @ConfigProperty(name="mingle.keycloak.client.id")
     String clientId;
 
-    @ConfigProperty(name="mingle.keycloak.username")
-    String username;
-
-    @ConfigProperty(name="mingle.keycloak.password")
-    String password;
+    @ConfigProperty(name="mingle.keycloak.client.secret")
+    String secret;
 
     @Produces
     public Keycloak initKeyCloak(){
         return KeycloakBuilder.builder()
                 .serverUrl(url)
-                .realm("master") // Admin realm
-                .clientId("mingle-keycloak-admin")
-                .clientSecret("bWluZ2xlLXNlY3JldA==")
+                .realm(realm) // Admin realm
+                .clientId(clientId)
+                .clientSecret(secret)
                 .grantType("client_credentials")
-                .username("mingle-be")
-                .password("mingle-be")
                 .build();
 
 

@@ -6,24 +6,34 @@ import com.mingle.CredentialsDto;
 import com.mingle.MingleUserDto;
 import com.mingle.SuccessMsg;
 import com.mingle.entity.Audit;
+import com.mingle.entity.MingleRoles;
 import com.mingle.entity.MingleUser;
 import com.mingle.exception.DuplicateException;
+import com.mingle.exception.KeyCloakException;
 import com.mingle.exception.MingleAuthenticationException;
 import com.mingle.exception.NotFoundException;
 import com.mingle.impl.IMingleCreate;
 import com.mingle.repository.MingleUserRepository;
 import com.mingle.utility.ValidateParams;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
+import io.quarkus.security.identity.CurrentIdentityAssociation;
+import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.mutiny.Uni;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 
+import jakarta.ws.rs.core.Response;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.keycloak.admin.client.CreatedResponseUtil;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.representations.idm.CredentialRepresentation;
+import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 
+import java.security.Principal;
 import java.util.*;
 
 import static com.mingle.utility.ValidateParams.mingleFieldValidation;
@@ -34,16 +44,28 @@ import static com.mingle.utility.ValidateParams.mingleFieldValidation;
 @Slf4j
 public class UserService implements IMingleCreate<MingleUserDto> {
 
+    @ConfigProperty(name="mingle.target.keycloak.realm")
+    String targetRealm;
+
     private final MingleUserRepository mingleUserRepository;
     private final Keycloak keycloak;
 
+    @Inject
+    private CurrentIdentityAssociation currentIdentityAssociation;
+
     @WithTransaction
     public Uni<MingleUserDto> login(CredentialsDto credentials) {
-        log.info("Login attempt: {}", credentials);
-
-        return findUserByEmail(credentials.getEmail())
-                .chain(user -> verifyPassword(credentials.getPassword(), user))
-                .map(MingleUser::toMingleUserDto);
+           return currentIdentityAssociation.getDeferredIdentity()
+                .onItem().transformToUni(securityIdentity -> {
+                    if(securityIdentity.isAnonymous()){
+                        return Uni.createFrom()
+                                .failure(new MingleAuthenticationException("missing security identity")) ;
+                    }
+                       Principal principal = securityIdentity.getPrincipal();
+                       System.out.println("Authenticated User: " + principal.getName());
+                       return findUserByEmail(securityIdentity.getAttribute("email"))
+                               .map(MingleUser::toMingleUserDto);
+               });
     }
 
 
@@ -58,7 +80,7 @@ public class UserService implements IMingleCreate<MingleUserDto> {
 
 
     @WithTransaction
-    public Uni<SuccessMsg> create(MingleUserDto mingleUserDto) {
+    public Uni<MingleUserDto> create(MingleUserDto mingleUserDto) {
         return validateParams(mingleUserDto)
                 .chain(() -> checkForDuplicates(mingleUserDto))
                 .chain(() -> createNewMingleEntity(mingleUserDto));
@@ -70,38 +92,67 @@ public class UserService implements IMingleCreate<MingleUserDto> {
                         new MingleAuthenticationException("UNAUTHORIZED - User not found for email: "+ email));
     }
 
-    private Uni<MingleUser> verifyPassword(String password, MingleUser user) {
-        if (BCrypt.verifyer().verify(password.toCharArray(), user.getPassword()).verified) {
-            log.info("Password verified for user: ID={}", user.id);
-            return Uni.createFrom().item(user);
-        }
-        return Uni.createFrom().failure(new MingleAuthenticationException(
-                "UNAUTHORIZED - Invalid password for user: ID="+ user.id) );
-    }
 
 
 
-    public Uni<SuccessMsg> createNewMingleEntity(MingleUserDto mingleUserDto) {
+
+    public Uni<MingleUserDto> createNewMingleEntity(MingleUserDto mingleUserDto) {
         MingleUser newUser = new MingleUser(mingleUserDto);
-        String hashedPassword = BCrypt.withDefaults().hashToString(12, mingleUserDto.getPassword().toCharArray());
-        newUser.setPassword(hashedPassword);
         newUser.setIsActive(false); // Set user as inactive
         newUser.setAudit(Audit.builder().createdBy(mingleUserDto.getUsername()).build());
-
-        UserRepresentation minimalUser = new UserRepresentation();
-        minimalUser.setUsername("testuser");
-        minimalUser.setEnabled(true);
-// Try without password first
-        var response=keycloak.realm("mingle").users().create(minimalUser);
-        log.info("response status info  {}",response.getStatusInfo());
-
-
+        String authUserId=saveToAuthServer(mingleUserDto);
         return newUser.persist()
                 .onItem().castTo(MingleUser.class)
                 .map(savedUser -> {
                     log.info("User successfully created: ID={}", savedUser.id);
-                    return SuccessMsg.newBuilder().setMessage(String.valueOf(savedUser.id)).build();
+                    return savedUser.toMingleUserDto();
+                }).onFailure().invoke(()->{
+                    try{
+                        keycloak.realm(targetRealm).users().delete(authUserId);
+                    } catch (Exception e) {
+                        log.error("mismatch between keycloak and mingle db. " +
+                                "Failed to delete user from keycloak and failed to save user in mingle db");
+                        throw e;
+                    }
                 });
+    }
+
+    private String saveToAuthServer(MingleUserDto mingleUserDto) {
+        // Create user representation (without roles initially)
+        UserRepresentation userRepresentation = new UserRepresentation();
+        userRepresentation.setUsername(mingleUserDto.getUsername());
+        userRepresentation.setEmail(mingleUserDto.getEmail());
+        userRepresentation.setFirstName(mingleUserDto.getFirstname());
+        userRepresentation.setLastName(mingleUserDto.getLastname());
+        userRepresentation.setEnabled(true);
+
+        // Set credentials
+        CredentialRepresentation credentialRepresentation = new CredentialRepresentation();
+        credentialRepresentation.setType(CredentialRepresentation.PASSWORD);
+        credentialRepresentation.setValue(mingleUserDto.getPassword());
+        credentialRepresentation.setTemporary(false);
+        userRepresentation.setCredentials(List.of(credentialRepresentation));
+
+        // Create user
+        Response response = keycloak.realm(targetRealm).users().create(userRepresentation);
+
+        if (response.getStatus() != 201) {
+            throw new KeyCloakException.UserCreationFailed(response.readEntity(String.class),response.getStatus());
+        }
+           String userId =CreatedResponseUtil.getCreatedId(response);
+            // 4. Assign realm role (mingle-admin)
+            RoleRepresentation role = keycloak.realm(targetRealm)
+                .roles()
+                .get(MingleRoles.mingle_admin.name())
+                .toRepresentation();
+
+            keycloak.realm(targetRealm)
+                    .users()
+                    .get(userId)
+                    .roles()
+                    .realmLevel()
+                    .add(List.of(role));
+            return userId;
     }
 
     public Uni<MingleUserDto> validateParams(MingleUserDto mingleUserDto) {
