@@ -13,20 +13,14 @@ repositories {
 dependencies {
     implementation enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
     implementation 'io.quarkus:quarkus-container-image-jib'
-    // https://mvnrepository.com/artifact/io.quarkus/quarkus-grpc
-   // https://mvnrepository.com/artifact/io.quarkus/quarkus-smallrye-jwt
     implementation("io.quarkus:quarkus-smallrye-jwt:3.23.0")
-    // https://mvnrepository.com/artifact/io.smallrye.reactive/smallrye-mutiny-vertx-core
-//    implementation("io.smallrye.reactive:smallrye-mutiny-vertx-core:3.19.0")
     implementation("io.quarkus:quarkus-grpc:3.23.0")
     implementation 'io.quarkus:quarkus-arc'
     testImplementation 'io.quarkus:quarkus-junit5'// https://mvnrepository.com/artifact/jakarta.persistence/jakarta.persistence-api
-//    implementation("jakarta.persistence:jakarta.persistence-api:3.2.0")
 
     // https://mvnrepository.com/artifact/at.favre.lib/bcrypt
     implementation("at.favre.lib:bcrypt:0.10.2")
-//    quarkus-hibernate-reactive
-//    quarkus-grpc
+
     // https://mvnrepository.com/artifact/io.quarkus/quarkus-hibernate-reactive
     implementation 'io.quarkus:quarkus-hibernate-reactive:3.21.1'
 
@@ -42,7 +36,6 @@ dependencies {
     // https://mvnrepository.com/artifact/io.smallrye.reactive/mutiny
     implementation("io.smallrye.reactive:mutiny:2.9.0")
 
-//    implementation("io.quarkus:quarkus-smallrye-jwt:3.23.0")
 
 //     https://mvnrepository.com/artifact/io.quarkus/quarkus-smallrye-jwt-build
     implementation("io.quarkus:quarkus-smallrye-jwt-build:3.23.0")
@@ -71,10 +64,6 @@ dependencies {
 
     implementation 'io.grpc:grpc-census:1.56.0'
 
-
-    // https://mvnrepository.com/artifact/io.quarkus/quarkus-elytron-security-oauth2
-//    implementation 'io.quarkus:quarkus-elytron-security-oauth2:3.23.0'
-
     // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.2'
     // https://mvnrepository.com/artifact/org.modelmapper/modelmapper
@@ -82,10 +71,7 @@ dependencies {
 
     // https://mvnrepository.com/artifact/io.quarkus/quarkus-oidc
     implementation 'io.quarkus:quarkus-oidc:2.23.0.CR1'
-    // https://mvnrepository.com/artifact/io.quarkus/quarkus-keycloak-authorization
-//    implementation 'io.quarkus:quarkus-keycloak-authorization:3.23.0.CR1'
 
-    // JDBC driver dependencies
 
     implementation 'io.quarkus:quarkus-jdbc-postgresql'
     // https://mvnrepository.com/artifact/org.keycloak/keycloak-admin-client
