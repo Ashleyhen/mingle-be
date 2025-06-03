@@ -16,6 +16,7 @@ import com.mingle.impl.IMingleCreate;
 import com.mingle.repository.MingleUserRepository;
 import com.mingle.utility.ValidateParams;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
+import io.quarkus.runtime.util.StringUtil;
 import io.quarkus.security.identity.CurrentIdentityAssociation;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.mutiny.Uni;
@@ -26,6 +27,7 @@ import jakarta.inject.Singleton;
 import jakarta.ws.rs.core.Response;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.binary.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.keycloak.admin.client.CreatedResponseUtil;
 import org.keycloak.admin.client.Keycloak;
@@ -48,6 +50,7 @@ public class UserService implements IMingleCreate<MingleUserDto> {
     String targetRealm;
 
     private final MingleUserRepository mingleUserRepository;
+
     private final Keycloak keycloak;
 
     @Inject
@@ -56,26 +59,40 @@ public class UserService implements IMingleCreate<MingleUserDto> {
     @WithTransaction
     public Uni<MingleUserDto> login(CredentialsDto credentials) {
            return currentIdentityAssociation.getDeferredIdentity()
-                .onItem().transformToUni(securityIdentity -> {
-                    if(securityIdentity.isAnonymous()){
-                        return Uni.createFrom()
-                                .failure(new MingleAuthenticationException("missing security identity")) ;
-                    }
+                   .invoke(securityIdentity -> {
+                       if(securityIdentity.isAnonymous()){
+                           throw new MingleAuthenticationException("missing security identity");
+                       }
                        Principal principal = securityIdentity.getPrincipal();
                        System.out.println("Authenticated User: " + principal.getName());
-                       return findUserByEmail(securityIdentity.getAttribute("email"))
-                               .map(MingleUser::toMingleUserDto);
-               });
+                   })
+                .onItem().transformToUni(securityIdentity ->
+                           findUserByEmail(securityIdentity.getAttribute("email"))
+                        .map(MingleUser::toMingleUserDto));
     }
 
 
 
     @WithTransaction
     public Uni<MingleUserDto> update(MingleUserDto mingleUserDto) {
-        return validateUpdateParams(mingleUserDto)
-                .chain(() -> checkForEmailDuplicate(mingleUserDto))
-                .chain(() -> checkUserExists(mingleUserDto))
-                .chain((mingleUser) -> updateExistingUser(mingleUserDto,mingleUser));
+        return currentIdentityAssociation.getDeferredIdentity()
+                .onItem().transformToUni(securityIdentity -> {
+                    if(securityIdentity.isAnonymous()){
+                        return Uni.createFrom().failure(new MingleAuthenticationException("missing security identity"));
+                    }
+                    Principal principal = securityIdentity.getPrincipal();
+                    System.out.println("Authenticated User: " + principal.getName());
+                    String principleEmail=securityIdentity.getAttribute("email");
+                   if(!StringUtils.equals( mingleUserDto.getEmail(), principleEmail )){
+                       return Uni.createFrom().failure( new MingleAuthenticationException(
+                               "Invalid credentials",
+                               "Email: "+mingleUserDto.getEmail()+" attempted to update: "+principleEmail ));
+                   }
+                    return validateUpdateParams(mingleUserDto)
+                            .chain(() -> checkForEmailDuplicate(mingleUserDto))
+                            .chain(() -> checkUserExists(mingleUserDto))
+                            .chain((mingleUser) -> updateExistingUser(mingleUserDto,mingleUser));
+                });
     }
 
 

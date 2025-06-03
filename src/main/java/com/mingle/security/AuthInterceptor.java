@@ -61,7 +61,6 @@ public class AuthInterceptor implements ServerInterceptor {
                     jsonObject.get("roles").asJsonArray()
                             .forEach(t->builder.addRole(t.toString()));
                 }
-
                 // Set the security identity
                 identityAssociation.setIdentity(builder.build());
 

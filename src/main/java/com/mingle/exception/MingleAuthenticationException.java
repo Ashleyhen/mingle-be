@@ -9,7 +9,9 @@ public class MingleAuthenticationException extends MingleException{
     public MingleAuthenticationException(String debugMessage){
         super("UNAUTHENTICATED","Use a different email or password",debugMessage);
     }
-
+    public MingleAuthenticationException(String details, String debugMessage){
+        super("UNAUTHENTICATED",details,debugMessage);
+    }
 
     @Override
     protected Metadata getMetaData() {
