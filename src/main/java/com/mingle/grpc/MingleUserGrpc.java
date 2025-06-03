@@ -10,9 +10,13 @@ import com.mingle.impl.MingleCrudImpl;
 import com.mingle.services.UserService;
 import io.quarkus.grpc.GrpcService;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
+import io.quarkus.security.identity.CurrentIdentityAssociation;
+import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.control.ActivateRequestContext;
+import jakarta.inject.Inject;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -20,10 +24,14 @@ import lombok.extern.slf4j.Slf4j;
 
 @GrpcService
 @Slf4j
+@ActivateRequestContext
 @RequiredArgsConstructor
 public class MingleUserGrpc implements UserGrpc {
 
     private final UserService userService;
+
+
+
 
     private MingleCrudImpl<MingleUserDto> mingleCrud ;
 

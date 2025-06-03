@@ -27,7 +27,6 @@ import static com.mingle.utility.Formatters.toLocalDate;
 @NoArgsConstructor(force = true)
 @FieldNameConstants
 @Data
-@UserDefinition
 @Table(
         uniqueConstraints = {
                 @UniqueConstraint(columnNames = {"email"}),
@@ -55,9 +54,6 @@ public class MingleUser extends PanacheEntity {
     @Column(name="user_name",unique = true, nullable = false)
     private String username;
 
-    @Column(nullable = false)
-    @Password
-    private String password;
 
     @Column(nullable = false)
     private String zip;
@@ -87,8 +83,6 @@ public class MingleUser extends PanacheEntity {
     @Column(name="sport_type")
     private SportType sportType;
 
-    @Roles
-    private Set<String> roles;
 
     @Builder.Default
     @OneToMany(fetch = FetchType.EAGER,cascade = CascadeType.ALL, mappedBy = "organizer")
@@ -103,7 +97,6 @@ public class MingleUser extends PanacheEntity {
         this.firstname=mingleUserDto.getFirstname();
         this.lastname=mingleUserDto.getLastname();
         this.username=mingleUserDto.getUsername();
-        this.password=mingleUserDto.getPassword();
         this.zip=mingleUserDto.getZip();
         this.email=mingleUserDto.getEmail();
         this.phone=mingleUserDto.getPhone();
