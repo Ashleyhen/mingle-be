@@ -4,6 +4,8 @@ package com.mingle.entity;
 import com.google.protobuf.ByteString;
 import com.mingle.MingleUserDto;
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
+import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
+import io.quarkus.runtime.util.StringUtil;
 import io.quarkus.security.jpa.Roles;
 import io.quarkus.security.jpa.UserDefinition;
 import io.quarkus.security.jpa.Username;
@@ -34,7 +36,11 @@ import static com.mingle.utility.Formatters.toLocalDate;
         },
         name = "mingle_user"
 )
-public class MingleUser extends PanacheEntity {
+public class MingleUser extends PanacheEntityBase {
+
+    @Id
+    @Column( unique = true, nullable = false)
+    private String sub; // Using 'sub' as the custom ID
 
     @Embedded
     Audit audit;
@@ -89,9 +95,9 @@ public class MingleUser extends PanacheEntity {
     private List<MingleGroup> mingleGroup = List.of() ;
 
 
-    public MingleUser(MingleUserDto mingleUserDto){
-        if(mingleUserDto.getId()!=0L)
-            this.id=mingleUserDto.getId();
+    public MingleUser(MingleUserDto mingleUserDto,String sub){
+        if(StringUtil.isNullOrEmpty(sub))
+            this.sub=sub;
         this.bio=mingleUserDto.getBio();
         this.image= mingleUserDto.getImage().toByteArray();
         this.firstname=mingleUserDto.getFirstname();
@@ -106,14 +112,17 @@ public class MingleUser extends PanacheEntity {
         this.skill = Skill.valueOf(mingleUserDto.getSkill());
         this.sportType=SportType.valueOf(mingleUserDto.getSportType());
         this.setMingleGroup(
-                mingleUserDto.getMingleGroupDtoList().stream().map(MingleGroup::new).toList()
+                mingleUserDto.getMingleGroupDtoList().stream().map(t-> {
+                    MingleGroup mg =new MingleGroup(t);
+                    mg.setOrganizer(this);
+                    return mg;
+                }).toList()
         );
         this.getMingleGroup().forEach(t->t.setOrganizer(this));
     }
 
     public MingleUserDto toMingleUserDto(){
         MingleUserDto.Builder builder =MingleUserDto.newBuilder()
-                .setId(this.id)
                 .setBio(this.bio)
                 .setFirstname(this.firstname)
                 .setLastname(this.lastname)
@@ -135,7 +144,6 @@ public class MingleUser extends PanacheEntity {
     }
 
     public MingleUser updateMingleUser(MingleUserDto mingleUserDto){
-                this.id=mingleUserDto.getId();
                 this.bio=mingleUserDto.getBio();
                 this.firstname=mingleUserDto.getFirstname();
                 this.lastname=mingleUserDto.getLastname();

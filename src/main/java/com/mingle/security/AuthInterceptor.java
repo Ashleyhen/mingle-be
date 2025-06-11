@@ -62,6 +62,8 @@ public class AuthInterceptor implements ServerInterceptor {
                             .forEach(t->builder.addRole(t.toString()));
                 }
                 // Set the security identity
+                builder.addAttribute("sub",jwt.getSubject());
+
                 identityAssociation.setIdentity(builder.build());
 
             } catch (ParseException e) {

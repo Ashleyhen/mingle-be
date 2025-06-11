@@ -3,6 +3,7 @@ package com.mingle.services;
 import com.google.protobuf.GeneratedMessageV3;
 import com.mingle.MingleLeagueDto;
 import com.mingle.MingleLocationDto;
+import com.mingle.entity.MingleGroup;
 import com.mingle.entity.MingleLeague;
 import com.mingle.entity.MingleLocation;
 import com.mingle.exception.DuplicateException;
@@ -10,10 +11,12 @@ import com.mingle.impl.IMingleCreate;
 import com.mingle.repository.GroupRepository;
 import com.mingle.repository.LeagueRepository;
 import com.mingle.repository.LocationRepository;
+import com.mingle.security.AuthenticateUser;
 import com.mingle.utility.ValidateParams;
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +29,9 @@ import static com.mingle.utility.ValidateParams.mingleFieldValidation;
 public class LocationService implements IMingleCreate<MingleLocationDto> {
     private final LocationRepository locationRepository;
     private final LeagueRepository leagueRepository;
+    @Inject
+    private final AuthenticateUser authenticateUser;
+
     @Override
     public Uni<MingleLocationDto> validateParams(MingleLocationDto leagueDto) {
         return Uni.createFrom().item(() -> {
@@ -53,15 +59,17 @@ public class LocationService implements IMingleCreate<MingleLocationDto> {
     @Override
     @WithTransaction
     public Uni<MingleLocationDto> createNewMingleEntity(MingleLocationDto mingleLocationDto) {
-        return leagueRepository.findById(mingleLocationDto.getMingleLeagueDto().getId()).chain(mingleLeague->{
-            MingleLocation mingleLocation = new MingleLocation(mingleLocationDto);
-            mingleLocation.setMingleLeague(mingleLeague);
-            return mingleLocation.persist();
-        }).onItem()
-                .castTo(MingleLocation.class)
-                .map(mingleLocation -> {
-                    log.info("Location successfully created: ID={}", mingleLocation.id);
-                    return mingleLocation.getMingleLocationDto();
-                });
-    }
+        return authenticateUser.getAuthorizedUser(leagueRepository)
+            .chain(mingleLeague->{
+                MingleLocation mingleLocation = new MingleLocation(mingleLocationDto);
+                mingleLocation.setMingleLeague(mingleLeague);
+                return mingleLocation.persist();
+            }).onItem()
+                    .castTo(MingleLocation.class)
+                    .map(mingleLocation -> {
+                        log.info("Location successfully created: ID={}", mingleLocation.id);
+                        return mingleLocation.getMingleLocationDto();
+                    });
+        }
 }
+

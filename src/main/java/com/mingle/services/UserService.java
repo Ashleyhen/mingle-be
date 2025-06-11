@@ -75,24 +75,30 @@ public class UserService implements IMingleCreate<MingleUserDto> {
 
     @WithTransaction
     public Uni<MingleUserDto> update(MingleUserDto mingleUserDto) {
+        return authenticate(mingleUserDto)
+                .flatMap(sub-> validateUpdateParams(mingleUserDto)
+                        .chain(() -> checkForEmailDuplicate(mingleUserDto, sub))
+                        .chain(() -> checkUserExists(sub))
+                        .chain((mingleUser) -> updateExistingUser(mingleUserDto,mingleUser)));
+    }
+
+    private Uni<String> authenticate(MingleUserDto mingleUserDto) {
         return currentIdentityAssociation.getDeferredIdentity()
-                .onItem().transformToUni(securityIdentity -> {
-                    if(securityIdentity.isAnonymous()){
+                .onItem().transform(securityIdentity -> {
+                    if (securityIdentity.isAnonymous()) {
                         return Uni.createFrom().failure(new MingleAuthenticationException("missing security identity"));
                     }
                     Principal principal = securityIdentity.getPrincipal();
                     System.out.println("Authenticated User: " + principal.getName());
-                    String principleEmail=securityIdentity.getAttribute("email");
-                   if(!StringUtils.equals( mingleUserDto.getEmail(), principleEmail )){
-                       return Uni.createFrom().failure( new MingleAuthenticationException(
-                               "Invalid credentials",
-                               "Email: "+mingleUserDto.getEmail()+" attempted to update: "+principleEmail ));
-                   }
-                    return validateUpdateParams(mingleUserDto)
-                            .chain(() -> checkForEmailDuplicate(mingleUserDto))
-                            .chain(() -> checkUserExists(mingleUserDto))
-                            .chain((mingleUser) -> updateExistingUser(mingleUserDto,mingleUser));
-                });
+                    String principleEmail = securityIdentity.getAttribute("email");
+                    if (!StringUtils.equals(mingleUserDto.getEmail(), principleEmail)) {
+                        return Uni.createFrom().failure(new MingleAuthenticationException(
+                                "Invalid credentials",
+                                "Email: " + mingleUserDto.getEmail() + " attempted to update: " + principleEmail));
+                    }
+                    return (String) securityIdentity.getAttribute("sub");
+
+                }).onItem().castTo(String.class);
     }
 
 
@@ -114,14 +120,14 @@ public class UserService implements IMingleCreate<MingleUserDto> {
 
 
     public Uni<MingleUserDto> createNewMingleEntity(MingleUserDto mingleUserDto) {
-        MingleUser newUser = new MingleUser(mingleUserDto);
+        String authUserId=saveToAuthServer(mingleUserDto);
+        MingleUser newUser = new MingleUser(mingleUserDto,authUserId);
         newUser.setIsActive(false); // Set user as inactive
         newUser.setAudit(Audit.builder().createdBy(mingleUserDto.getUsername()).build());
-        String authUserId=saveToAuthServer(mingleUserDto);
         return newUser.persist()
                 .onItem().castTo(MingleUser.class)
                 .map(savedUser -> {
-                    log.info("User successfully created: ID={}", savedUser.id);
+                    log.info("User successfully created: ID={}", savedUser.getSub());
                     return savedUser.toMingleUserDto();
                 }).onFailure().invoke(()->{
                     try{
@@ -213,21 +219,21 @@ public class UserService implements IMingleCreate<MingleUserDto> {
                                 mingleUserDto
                         ));
     }
-    private Uni<MingleUser> checkUserExists(MingleUserDto mingleUserDto) {
-        return mingleUserRepository.findById(mingleUserDto.getId())
+    private Uni<MingleUser> checkUserExists(String sub) {
+        return mingleUserRepository.findById(sub)
                 .onItem().ifNull().failWith(new NotFoundException(
                     "Failed to update user",
                     "Cannot update a user that doesn't exist",
-                    "userId: " + mingleUserDto.getId() + " doesn't exist"
+                    "userId: " + sub + " doesn't exist"
             ));
     }
 
-    private Uni<Void> checkForEmailDuplicate(MingleUserDto mingleUserDto) {
+    private Uni<Void> checkForEmailDuplicate(MingleUserDto mingleUserDto,String sub) {
         return mingleUserRepository.findByEmailOrUsername(mingleUserDto.getEmail(),mingleUserDto.getUsername())
                 .onItem().castTo(MingleUser.class)
                 .onItem().ifNotNull()
                 .invoke(duplicateUser -> {
-                    if (!Objects.equals(duplicateUser.id, mingleUserDto.getId())) {
+                    if (!Objects.equals(duplicateUser.getSub(), sub)) {
                         throw new DuplicateException("Failed to update user","Can't update user to an existing username or email",mingleUserDto);
                     }
                 }).replaceWithVoid(); // Return Void explicitly

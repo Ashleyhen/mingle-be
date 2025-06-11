@@ -75,7 +75,6 @@ public class MingleGroup extends PanacheEntity {
         this.images= mingleGroupDto.getImages().toByteArray();
         this.zip=mingleGroupDto.getZip();
         this.league=mingleGroupDto.getMingleLeagueDtoList().stream().map(MingleLeague::new).toList();
-        this.organizer=new MingleUser(mingleGroupDto.getOrganizer());
         this.getLeague().forEach(t->t.setMingleGroup(this));
     }
 

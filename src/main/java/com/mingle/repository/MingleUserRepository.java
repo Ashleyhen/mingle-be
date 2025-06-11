@@ -2,12 +2,13 @@ package com.mingle.repository;
 
 import com.mingle.entity.MingleUser;
 import io.quarkus.hibernate.reactive.panache.PanacheRepository;
+import io.quarkus.hibernate.reactive.panache.PanacheRepositoryBase;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 
 
 @ApplicationScoped
-public class MingleUserRepository implements PanacheRepository<MingleUser> {
+public class MingleUserRepository implements PanacheRepositoryBase<MingleUser,String> {
 
     public Uni<MingleUser> findByEmail(String email){
         return  MingleUser.find("email = ?1", email).firstResult();
