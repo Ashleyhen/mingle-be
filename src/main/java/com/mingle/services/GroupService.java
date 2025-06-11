@@ -7,6 +7,7 @@ import com.mingle.exception.NotFoundException;
 import com.mingle.impl.IMingleCreate;
 import com.mingle.repository.GroupRepository;
 import com.mingle.repository.MingleUserRepository;
+import com.mingle.security.AuthenticateUser;
 import com.mingle.utility.ValidateParams;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
@@ -23,6 +24,9 @@ import static com.mingle.utility.ValidateParams.mingleFieldValidation;
 public class GroupService  implements IMingleCreate<MingleGroupDto> {
 
     private final GroupRepository groupRepository;
+
+    private final AuthenticateUser authenticateUser;
+
     private final MingleUserRepository mingleUserRepository;
 
     @WithTransaction
@@ -36,8 +40,7 @@ public class GroupService  implements IMingleCreate<MingleGroupDto> {
 
     @WithTransaction
     public Uni<MingleGroupDto> updateGroup(MingleGroupDto mingleGroupDto) {
-        return validateParams(mingleGroupDto)
-                .chain(()->groupRepository.findByIdWithOrganizer(mingleGroupDto.getId()))
+        return authenticateUser.getAuthorizedUser(groupRepository)
                 .onItem().ifNull().failWith(new NotFoundException(
                         "Failed to update group",
                         "Can't update group if the group doesn't exist",
@@ -48,8 +51,8 @@ public class GroupService  implements IMingleCreate<MingleGroupDto> {
     }
 
     @WithTransaction
-    public Uni<ListMingleGroupDto> findAllGroupsByUserId(Long id) {
-        return mingleUserRepository.findById(id)
+    public Uni<ListMingleGroupDto> findAllGroupsByUserId(String sub) {
+        return mingleUserRepository.findById(sub)
                 .flatMap(user -> Mutiny.fetch(user.getMingleGroup()) // Fetch the lazy collection correctly
                         .map(groups -> ListMingleGroupDto.newBuilder()
                                 .addAllGroup(groups.stream().map(MingleGroup::toMingleGroupDto).toList())
@@ -89,14 +92,20 @@ public class GroupService  implements IMingleCreate<MingleGroupDto> {
     @Override
     @WithTransaction
     public Uni<MingleGroupDto> createNewMingleEntity(MingleGroupDto mingleGroup) {
-        MingleGroup newGroup = new MingleGroup(mingleGroup); // Convert DTO to entity
-        newGroup.setIsActive(true);
-        return newGroup.persist()
-                .onItem().castTo(MingleGroup.class)
-                .map(savedGroup -> {
-                    log.info("Group successfully created: ID={}", savedGroup.id);
-                    return savedGroup.toMingleGroupDto();
-                });
+        return authenticateUser.getAuthorizedUser()
+                .flatMap(mingleUserRepository::findById)
+                .flatMap(mingleUser->{
+            MingleGroup newGroup = new MingleGroup(mingleGroup); // Convert DTO to entity
+            newGroup.setIsActive(true);
+            newGroup.setOrganizer(mingleUser);
+            return newGroup.persist()
+                    .onItem().castTo(MingleGroup.class)
+                    .map(savedGroup -> {
+                        log.info("Group successfully created: ID={}", savedGroup.id);
+                        return savedGroup.toMingleGroupDto();
+                    });
+        });
+
     }
 
 

@@ -42,7 +42,7 @@ public class MingleGroupGrpc implements GroupGrpc {
 
     @Override
     public Uni<ListMingleGroupDto> findAllGroupsByUserId(MingleId mingleUserId) {
-        return groupService.findAllGroupsByUserId(mingleUserId.getId())
+        return groupService.findAllGroupsByUserId(mingleUserId.getSub())
                 .onFailure().transform(ExceptionUtil::exceptionHandler);
     }
 

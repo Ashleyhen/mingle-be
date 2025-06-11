@@ -27,7 +27,6 @@ service LocationGrpc{
 }
 
 message MingleUserDto {
-  int64 id = 1;
   bytes image=2;
   string bio=3;
   string firstname=4;
@@ -105,7 +104,7 @@ message SuccessMsg {
 
 
 message MingleId {
-    int64 id=1;
+    string sub=1;
 }
 
 message GroupUpdatedResponse {
